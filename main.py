@@ -1,0 +1,113 @@
+
+import time
+import requests
+import cv2
+import numpy as np
+
+from requests.auth import HTTPDigestAuth
+from ultralytics import solutions
+
+
+# -----------------------------------------
+# CONFIGURACIÓN
+# -----------------------------------------
+
+URL_FRAME = "http://192.168.6.188/ISAPI/Streaming/channels/101/picture"
+
+DVR_USERNAME = "admin"
+DVR_PASSWORD = "12345"
+
+INTERVALO_SEGUNDOS = 3
+
+# Coordenadas del polígono de interés (x, y)
+# IMPORTANTE: adaptar a la resolución de tu imagen.
+REGION = {
+    "personas": [
+        (0, 0),
+        (700, 0),
+        (700, 500),
+        (0, 500)
+    ]
+}
+
+
+# -----------------------------------------
+# INICIALIZACIÓN DEL CONTADOR
+# -----------------------------------------
+
+contador = solutions.RegionCounter(
+    model="yolo26n.pt",
+    region=REGION,
+    classes=[2],       # Solo personas
+    conf=0.7, #0.25
+    tracker="bytetrack.yaml",
+    verbose=False,
+    iou=0.7
+)
+
+
+# -----------------------------------------
+# FUNCIÓN DE CONTEO
+# -----------------------------------------
+
+def contar_personas():
+
+    try:
+        # Descargar una imagen nueva
+        r = requests.get(
+            URL_FRAME,
+            auth=HTTPDigestAuth(
+                DVR_USERNAME,
+                DVR_PASSWORD
+            ),
+            timeout=10
+        )
+
+        r.raise_for_status()
+
+        # Convertir JPG recibido a imagen OpenCV
+        imagen_bytes = np.frombuffer(r.content, np.uint8)
+        imagen = cv2.imdecode(
+            imagen_bytes,
+            cv2.IMREAD_COLOR
+        )
+
+        if imagen is None:
+            raise ValueError("No se pudo decodificar la imagen JPG")
+
+        # Ejecutar YOLO26 y analizar la región
+        resultado = contador(imagen)
+
+        # Obtener cantidad de personas dentro de la región
+        cantidad = resultado.region_counts.get(
+            "personas", 0
+        )
+
+        return int(cantidad)
+
+    except Exception as e:
+        print(f"Error procesando imagen: {e}")
+        return None
+
+
+# -----------------------------------------
+# BUCLE PRINCIPAL
+# -----------------------------------------
+
+if __name__ == "__main__":
+
+    while True:
+
+        inicio = time.monotonic()
+
+        cantidad = contar_personas()
+
+        if cantidad is not None:
+            print(f"Personas en el área: {cantidad}")
+
+        # Mantener intervalo de 3 segundos
+        tiempo_procesamiento = time.monotonic() - inicio
+
+        time.sleep(
+            max(0, INTERVALO_SEGUNDOS - tiempo_procesamiento)
+        )
