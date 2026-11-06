@@ -12,7 +12,10 @@ from ultralytics import solutions
 # CONFIGURACIÓN
 # -----------------------------------------
 
-URL_FRAME = "http://192.168.6.188/ISAPI/Streaming/channels/101/picture"
+URL_FRAME = "https://media.istockphoto.com/id/1457298174/es/foto/ciudadanos-cruzando-cebra-abarrotada-tiro-ancho.jpg?s=612x612&w=0&k=20&c=ZiERaYOfResMvzG3BkYS7LGLpI1aPbBCEWBmPc7wu84="
+# URL_FRAME = "https://img.magnific.com/foto-gratis/tiro-completo-amigos-caminando-juntos_23-2148618878.jpg?semt=ais_hybrid&w=740&q=80"
+# URL_FRAME = "https://media.istockphoto.com/id/1364054930/es/foto/multitud-de-personas-irreconocibles-cruzando-la-calle-en-el-sem%C3%A1foro-cebra.jpg?s=612x612&w=0&k=20&c=IfD3VDx9E0QVZB8UzFe84f47P9C9TCigkVwndmcGzJA="
+# URL_FRAME = "http://192.168.6.188/ISAPI/Streaming/channels/101/picture"
 
 DVR_USERNAME = "admin"
 DVR_PASSWORD = "12345"
@@ -38,11 +41,11 @@ REGION = {
 contador = solutions.RegionCounter(
     model="yolo26n.pt",
     region=REGION,
-    classes=[2],       # Solo personas
-    conf=0.7, #0.25
+    classes=[0],       # Solo personas
+    conf=0.1, #0.25
     tracker="bytetrack.yaml",
     verbose=False,
-    iou=0.7
+    iou=0.95
 )
 
 
@@ -104,6 +107,7 @@ if __name__ == "__main__":
 
         if cantidad is not None:
             print(f"Personas en el área: {cantidad}")
+            requests.get(url="http://localhost/mi_api.php", params={"cant": cantidad})
 
         # Mantener intervalo de 3 segundos
         tiempo_procesamiento = time.monotonic() - inicio
